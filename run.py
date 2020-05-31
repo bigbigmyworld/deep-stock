@@ -13,7 +13,8 @@ import matplotlib.font_manager as fm
 font = fm.FontProperties(fname='font/wqy-microhei.ttc')
 # plt.rc('font', family='Source Han Sans CN')
 plt.rcParams['axes.unicode_minus'] = False
-
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 def stock_trade(stock_file):
     day_profits = []
@@ -50,7 +51,7 @@ def find_file(path, name):
 
 def test_a_stock_trade(stock_code):
     stock_file = find_file('./stockdata/train', str(stock_code))
-
+    print(stock_file)
     daily_profits = stock_trade(stock_file)
     fig, ax = plt.subplots()
     ax.plot(daily_profits, '-o', label=stock_code, marker='o', ms=10, alpha=0.7, mfc='orange')
@@ -83,7 +84,9 @@ def multi_stock_trade():
 
 if __name__ == '__main__':
     # multi_stock_trade()
-    test_a_stock_trade('sh.600036')
+    #test_a_stock_trade('sh.600036')
+    test_a_stock_trade('sz.002241')
+
     # ret = find_file('./stockdata/train', '600036')
     # print(ret)
 

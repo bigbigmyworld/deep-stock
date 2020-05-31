@@ -2,10 +2,13 @@
 
 .idea
 stockdata
+rl_stock_env
 model
 log
 .vscode/
 *.pkl
+img
+font
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

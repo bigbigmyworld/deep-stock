@@ -69,6 +69,8 @@ class StockTradingEnv(gym.Env):
 
         if action_type < 1:
             # Buy amount % of balance in shares
+            print(self.df.loc[self.current_step, "date"])
+
             total_possible = int(self.balance / current_price)
             shares_bought = int(total_possible * amount)
             prev_cost = self.cost_basis * self.shares_held
@@ -78,6 +80,7 @@ class StockTradingEnv(gym.Env):
             self.cost_basis = (
                 prev_cost + additional_cost) / (self.shares_held + shares_bought)
             self.shares_held += shares_bought
+            print("购入" + str(shares_bought))
 
         elif action_type < 2:
             # Sell amount % of shares held
@@ -86,6 +89,7 @@ class StockTradingEnv(gym.Env):
             self.shares_held -= shares_sold
             self.total_shares_sold += shares_sold
             self.total_sales_value += shares_sold * current_price
+            print("售出" + str(shares_sold))
 
         self.net_worth = self.balance + self.shares_held * current_price
 
@@ -144,6 +148,7 @@ class StockTradingEnv(gym.Env):
         # Render the environment to the screen
         profit = self.net_worth - INITIAL_ACCOUNT_BALANCE
         print('-'*30)
+        print(self.df.loc[self.current_step, "date"])
         print(f'Step: {self.current_step}')
         print(f'Balance: {self.balance}')
         print(f'Shares held: {self.shares_held} (Total sold: {self.total_shares_sold})')
