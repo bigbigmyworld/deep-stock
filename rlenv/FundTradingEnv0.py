@@ -23,12 +23,12 @@ MAX_DAY_CHANGE = 1
 INITIAL_ACCOUNT_BALANCE = 10000
 
 
-class StockTradingEnv(gym.Env):
+class FundTradingEnv(gym.Env):
     """A stock trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
 
     def __init__(self, df):
-        super(StockTradingEnv, self).__init__()
+        super(FundTradingEnv, self).__init__()
 
         self.df = df
         self.reward_range = (0, MAX_ACCOUNT_BALANCE)
@@ -38,25 +38,28 @@ class StockTradingEnv(gym.Env):
             low=np.array([0, 0]), high=np.array([3, 1]), dtype=np.float16)
 
         # Prices contains the OHCL values for the last five prices
+        # shape数量
         self.observation_space = spaces.Box(
-            low=0, high=1, shape=(19,), dtype=np.float16)
+            low=0, high=1, shape=(8,), dtype=np.float16)
 
     def _next_observation(self):
         obs = np.array([
-            self.df.loc[self.current_step, 'open'] / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step, 'high'] / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step, 'low'] / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step, 'close'] / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step, 'volume'] / MAX_VOLUME,
-            # 成交数量
-            self.df.loc[self.current_step, 'amount'] / MAX_AMOUNT,
-            self.df.loc[self.current_step, 'adjustflag'] / 10,
-            self.df.loc[self.current_step, 'tradestatus'] / 1,
-            self.df.loc[self.current_step, 'pctChg'] / 100,
-            self.df.loc[self.current_step, 'peTTM'] / 1e4,
-            self.df.loc[self.current_step, 'pbMRQ'] / 100,
-            self.df.loc[self.current_step, 'psTTM'] / 100,
-            self.df.loc[self.current_step, 'pctChg'] / 1e3,
+            self.df.loc[self.current_step, 'unit_nav'] / MAX_SHARE_PRICE,
+            self.df.loc[self.current_step, 'diff_pct'] / MAX_SHARE_PRICE,
+
+            # self.df.loc[self.current_step, 'high'] / MAX_SHARE_PRICE,
+            # self.df.loc[self.current_step, 'low'] / MAX_SHARE_PRICE,
+            # self.df.loc[self.current_step, 'close'] / MAX_SHARE_PRICE,
+            # self.df.loc[self.current_step, 'volume'] / MAX_VOLUME,
+            # # 成交数量
+            # self.df.loc[self.current_step, 'amount'] / MAX_AMOUNT,
+            # self.df.loc[self.current_step, 'adjustflag'] / 10,
+            # self.df.loc[self.current_step, 'tradestatus'] / 1,
+            # self.df.loc[self.current_step, 'pctChg'] / 100,
+            # self.df.loc[self.current_step, 'peTTM'] / 1e4,
+            # self.df.loc[self.current_step, 'pbMRQ'] / 100,
+            # self.df.loc[self.current_step, 'psTTM'] / 100,
+            # self.df.loc[self.current_step, 'pctChg'] / 1e3,
             self.balance / MAX_ACCOUNT_BALANCE,
             self.max_net_worth / MAX_ACCOUNT_BALANCE,
             self.shares_held / MAX_NUM_SHARES,
@@ -68,15 +71,18 @@ class StockTradingEnv(gym.Env):
 
     def _take_action(self, action):
         # Set the current price to a random price within the time step
-        current_price = random.uniform(
-            self.df.loc[self.current_step, "open"], self.df.loc[self.current_step, "close"])
-
-        action_type = action[0]
-        amount = action[1]
+        if self.current_step == 0:
+            current_price = random.uniform(
+                self.df.loc[self.current_step, "unit_nav"], self.df.loc[self.current_step, "unit_nav"])
+        else:
+            current_price = random.uniform(
+                self.df.loc[self.current_step, "unit_nav"], self.df.loc[self.current_step - 1, "unit_nav"])
+        action_type = action[0]  # 1买入。2卖出。3保持
+        amount = action[1]  # 买入或卖出的百分比
+        print(self.df.loc[self.current_step, "end_date"])
 
         if action_type < 1:
             # Buy amount % of balance in shares
-            print(self.df.loc[self.current_step, "date"])
 
             total_possible = int(self.balance / current_price)
             shares_bought = int(total_possible * amount)
@@ -97,7 +103,8 @@ class StockTradingEnv(gym.Env):
             self.total_shares_sold += shares_sold
             self.total_sales_value += shares_sold * current_price
             print("售出" + str(shares_sold))
-
+        else:
+            print("保持持仓不变")
         self.net_worth = self.balance + self.shares_held * current_price
 
         if self.net_worth > self.max_net_worth:
@@ -113,7 +120,7 @@ class StockTradingEnv(gym.Env):
 
         self.current_step += 1
 
-        if self.current_step > len(self.df.loc[:, 'open'].values) - 1:
+        if self.current_step > len(self.df.loc[:, 'unit_nav'].values) - 1:
             self.current_step = 0  # loop training
             # done = True
 
@@ -147,7 +154,7 @@ class StockTradingEnv(gym.Env):
 
         # Set the current step to a random point within the data frame
         # self.current_step = random.randint(
-        #     0, len(self.df.loc[:, 'open'].values) - 6)
+        #     0, len(self.df.loc[:, 'unit_nav'].values) - 6)
         self.current_step = 0
 
         return self._next_observation()
@@ -157,7 +164,9 @@ class StockTradingEnv(gym.Env):
         # Render the environment to the screen
         profit = self.net_worth - INITIAL_ACCOUNT_BALANCE
         print('-' * 30)
-        print(self.df.loc[self.current_step, "date"])
+        print(self.df.loc[self.current_step, "end_date"])
+        print(self.df.loc[self.current_step, "unit_nav"])
+        print(self.df.loc[self.current_step, "diff_pct"])
         print(f'Step: {self.current_step}')
         print(f'Balance: {self.balance}')
         print(f'Shares held: {self.shares_held} (Total sold: {self.total_shares_sold})')
